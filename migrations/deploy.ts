@@ -8,7 +8,7 @@ module.exports = async function (provider: anchor.AnchorProvider) {
   // Configure client to use the provider.
   anchor.setProvider(provider);
 
-  // Test change
+  // Test changes
   // Add your deploy script here.
   // Yes, this is where you'd deploy any programs you have
 };
