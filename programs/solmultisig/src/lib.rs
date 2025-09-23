@@ -62,5 +62,22 @@ pub fn submit_transaction(ctx: Context<SubmitTransaction>, transaction: Vec<u8>)
     msg!("Transaction submitted. Counter: {}", multisig_account.transaction_counter);
     Ok(())
 }
+
+// Define the accounts for the multisig account
+#[account]
+pub struct MultisigAccount {
+    pub signers: Vec<Pubkey>,
+    pub threshold: u8,
+    pub transaction_counter: u64,
+}
+
+// Define the accounts used in the program
 #[derive(Accounts)]
-pub struct Initialize {}
+pub struct Initialize<'info> {
+    #[account(init, payer = user, space = 8 + 32 * 10)]
+    pub multisig_account: Account<'info, MultisigAccount>,
+    #[account(signer)]
+    pub user: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
+}
+
