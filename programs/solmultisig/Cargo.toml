@@ -8,15 +8,12 @@ edition = "2021"
 crate-type = ["cdylib", "lib"]
 name = "solmultisig"
 
+# Features
 [features]
 default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
-no-idl = []
-no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build"]
 
-
+# Dependencies
 [dependencies]
 anchor-lang = "0.31.1"
-
