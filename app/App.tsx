@@ -3,14 +3,22 @@ import * as anchor from "@coral-xyz/anchor";
 import idl from "../target/idl/solmultisig.json";
 import type { Solmultisig } from "../target/types/solmultisig";
 
-// Program ID
+// Program ID (replace with your actual deployed program address)
 const PROGRAM_ID = new anchor.web3.PublicKey(
   "2bNfvViroNQMkZ9b8GXoL7xgeoveBFDyc1BkLKjvpmPM"
 );
 
-// Dummy wallet object with publicKey, connection, and payer
-const dummyWallet = {
-  publicKey: new anchor.web3.PublicKey("YourWalletPublicKeyHere"), // Replace with actual wallet public key
+// Set up the connection (Devnet in this case)
+const connection = new anchor.web3.Connection(
+  anchor.web3.clusterApiUrl("devnet")
+);
+
+// Create a dummy wallet with publicKey and mock signing methods
+// NOTE: This will NOT work for real signing; use a wallet adapter (like Phantom) in production
+const dummyPublicKey = new anchor.web3.PublicKey("YourWalletPublicKeyHere"); // 🔁 Replace with actual public key
+
+const wallet: anchor.Wallet = {
+  publicKey: dummyPublicKey,
   signTransaction: async <
     T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction
   >(
@@ -21,28 +29,7 @@ const dummyWallet = {
   >(
     txs: T[]
   ): Promise<T[]> => txs,
-  connection: new anchor.web3.Connection(anchor.web3.clusterApiUrl("devnet")),
-  payer: new anchor.web3.PublicKey("YourWalletPublicKeyHere"), // Add the payer here
-};
-
-// Fixing the wallet structure for Anchor
-const wallet: anchor.Wallet = {
-  publicKey: dummyWallet.publicKey,
-  signTransaction: async <
-    T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction
-  >(
-    tx: T
-  ): Promise<T> => {
-    return dummyWallet.signTransaction(tx);
-  },
-  signAllTransactions: async <
-    T extends anchor.web3.Transaction | anchor.web3.VersionedTransaction
-  >(
-    txs: T[]
-  ): Promise<T[]> => {
-    return dummyWallet.signAllTransactions(txs);
-  },
-  payer: dummyWallet.payer, // Include the payer
+  payer: anchor.web3.Keypair.generate(), // Only needed in Node environments
 };
 
 const App: React.FC = () => {
@@ -51,29 +38,32 @@ const App: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!wallet) return;
-
-    // Create the provider using the wallet and connection
-    const provider = new anchor.AnchorProvider(wallet.connection, wallet, {
-      preflightCommitment: "processed", // Optional: Change commitment level if needed
+    // Set up provider
+    const provider = new anchor.AnchorProvider(connection, wallet, {
+      preflightCommitment: "processed",
     });
 
-    // Initialize program instance with the provider
+    // Optionally set provider globally
+    anchor.setProvider(provider);
+
+    // Create program instance using the IDL and provider
     const programInstance = new anchor.Program<Solmultisig>(
       idl as anchor.Idl,
       PROGRAM_ID,
       provider
     );
-    setProgram(programInstance);
-  }, [wallet]);
 
+    setProgram(programInstance);
+  }, []);
+
+  // Initialize a multisig account
   const initializeMultisig = async () => {
-    if (!program || !wallet) {
-      console.error("Program or wallet not initialized");
+    if (!program) {
+      console.error("Program not initialized");
       return;
     }
 
-    const signers = [wallet.publicKey];
+    const signers = [wallet.publicKey]; // Initial signers
     const threshold = 2;
 
     const [multisigPDA, bump] = await anchor.web3.PublicKey.findProgramAddress(
@@ -96,13 +86,14 @@ const App: React.FC = () => {
     }
   };
 
+  // Add a new signer to the multisig
   const addSigner = async (newSigner: anchor.web3.PublicKey) => {
-    if (!program || !wallet) {
-      console.error("Program or wallet not initialized");
+    if (!program) {
+      console.error("Program not initialized");
       return;
     }
 
-    const [multisigPDA, _] = await anchor.web3.PublicKey.findProgramAddress(
+    const [multisigPDA] = await anchor.web3.PublicKey.findProgramAddress(
       [Buffer.from("multisig"), wallet.publicKey.toBuffer()],
       PROGRAM_ID
     );
@@ -127,8 +118,8 @@ const App: React.FC = () => {
       <h1>Multisig Wallet</h1>
       <button onClick={initializeMultisig}>Initialize Multisig</button>
       <button
-        onClick={() =>
-          addSigner(new anchor.web3.PublicKey("NewSignerPublicKeyHere"))
+        onClick={
+          () => addSigner(new anchor.web3.PublicKey("NewSignerPublicKeyHere")) // 🔁 Replace with valid public key
         }
       >
         Add Signer
